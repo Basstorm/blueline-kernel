@@ -1,0 +1,113 @@
+name: Build Kernel(Blueline-xDroid-Kernel_KSU_Kprobe)
+on:
+  workflow_dispatch:
+
+jobs:
+  Blueline-xDroid-Kernel_KSU_Kprobe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Installing Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip p7zip-full curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
+          sudo apt-get clean
+          
+      - name: Cache Toolchains
+        id: cache-toolchains
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-toolchains
+        with:
+          key: cache-toolchains
+          path: |
+            ~/clang
+            ~/arm-linux-androideabi-4.9
+            ~/aarch64-linux-android-4.9
+
+      - if: ${{ steps.cache-toolchains.outputs.cache-hit != 'true' }}
+        name: Cloning Toolchain
+        continue-on-error: true
+        run: |
+          git clone https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r445002 --depth=1 --single-branch --no-tags -b 12.0 ~/clang
+          git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android-10.0.0_r47 --depth=1 --single-branch --no-tags ~/aarch64-linux-android-4.9
+          git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b android-10.0.0_r47 --depth=1 --single-branch --no-tags ~/arm-linux-androideabi-4.9
+          git clone https://github.com/SoDebug/AnyKernel3.git
+          wget https://android.googlesource.com/platform/system/libufdt/+archive/refs/heads/master/utils.tar.gz
+          tar xvf utils.tar.gz
+          sudo cp src/mkdtboimg.py ~/clang/bin/mkdtimg
+          sudo chmod a+x ~/clang/bin/mkdtimg
+          
+      - name: Cloning AnyKernel3
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3 --depth=1
+
+      - name: Cloning Source
+        run: |
+          git clone https://github.com/xDroidOSS-Pixel/kernel_google_bluecross --depth=1 -b thirteen --recurse-submodules blueline-kernel
+      
+      - name: Customise
+        run: |
+          echo "#!/bin/bash 
+          mkdtimg cfg_create $1 $2 $3
+          echo $1
+          echo $2
+          echo $3
+          " > ~/clang/bin/cfg_create
+          sudo chmod a+x ~/clang/bin/cfg_create
+          
+      - name: intergrate KernelSU
+        run: |
+          cd blueline-kernel
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+          echo "CONFIG_MODULES=y" >> arch/arm64/configs/b1c1_defconfig
+          echo "CONFIG_KPROBES=y" >> arch/arm64/configs/b1c1_defconfig
+          echo "CONFIG_HAVE_KPROBES=y" >> arch/arm64/configs/b1c1_defconfig
+          echo "CONFIG_KPROBE_EVENTS=y" >> arch/arm64/configs/b1c1_defconfig
+          
+      - name: Compiling Kernel
+        run: |
+          CLANG=~/clang/bin
+          GCC32=~/arm-linux-androideabi-4.9/bin
+          GCC64=~/aarch64-linux-android-4.9/bin
+          PATH=$CLANG:$GCC64:$GCC32:$PATH
+          export PATH
+          export ARCH=arm64
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CROSS_COMPILE=aarch64-linux-android-
+          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+          output_dir=out
+          pushd blueline-kernel
+          sed -i 's/CONFIG_LTO=y/CONFIG_LTO=n/' arch/arm64/configs/b1c1_defconfig
+          sed -i 's/CONFIG_LTO_CLANG=y/CONFIG_LTO_CLANG=n/' arch/arm64/configs/b1c1_defconfig
+          sed -i 's/CONFIG_THINLTO=y/CONFIG_THINLTO=n/' arch/arm64/configs/b1c1_defconfig
+          echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/b1c1_defconfig
+          alias cfg_create='mkdtimg cfg_create'
+          make O=out ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip b1c1_defconfig
+          make O=out ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip -j$(grep -c ^processor /proc/cpuinfo)
+          popd
+          
+      - name: Creating Config Info
+        run: |
+          echo "Device: Goole Pixel 3 
+          Source Code Tree: xDroidOSS-Pixel/kernel_google_bluecross branch:thirteen
+          Code: blueline
+          Contain KernelSU: YES
+          Build Code: $(date +%Y%m%d)_${{ github.run_number }}
+          " >> INFO.txt
+          
+      - name: Packaging the Kernel
+        run: |
+          cp -v blueline-kernel/out/arch/arm64/boot/Image.lz4 \
+                     AnyKernel3/
+          pushd AnyKernel3
+          7z a -mx9 ../Blueline-xDroid-Kernel_KSU_Kprobe.zip *
+          popd
+          
+      - name: Uploading Kernel Package to GH-Release
+        uses: ncipollo/release-action@v1.8.6
+        with:
+          artifacts: Blueline-xDroid-Kernel_KSU_Kprobe.zip
+          name: " Blueline-xDroid-Kernel_KSU_Kprobe"
+          tag: " ${{ github.run_number }}_Blueline-xDroid-Kernel_KSU_Kprobe"
+          bodyFile: "INFO.txt"
+          token: ${{ secrets.GITHUB_TOKEN }}
