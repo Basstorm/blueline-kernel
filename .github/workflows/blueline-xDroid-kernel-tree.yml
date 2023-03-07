@@ -48,7 +48,7 @@ jobs:
       - name: Customise
         run: |
           echo "#!/bin/bash 
-          mkdtimg cfg_create $1 $2 $3
+          mkdtimg cfg_create arch/arm64/boot/dtbo.img ../arch/arm64/boot/dts/dtboimg.cfg
           " > ~/clang/bin/cfg_create
           sudo chmod a+x ~/clang/bin/cfg_create
           
