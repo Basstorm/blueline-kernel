@@ -47,7 +47,6 @@ jobs:
           
       - name: Compiling Kernel
         run: |
-          cd bluecross_kernel
           CLANG=~/clang/bin
           GCC32=~/arm-linux-androideabi-4.9/bin
           GCC64=~/aarch64-linux-android-4.9/bin
