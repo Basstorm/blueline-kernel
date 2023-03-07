@@ -70,8 +70,8 @@ jobs:
           sed -i 's/CONFIG_THINLTO=y/CONFIG_THINLTO=n/' arch/arm64/configs/b1c1_defconfig
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/b1c1_defconfig
           alias cfg_create='mkdtimg cfg_create'
-          make O=out ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip b1c1_defconfig
-          make O=out ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip -j$(grep -c ^processor /proc/cpuinfo)
+          make O=out V=1 ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip b1c1_defconfig
+          make O=out V=1 ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip -j1
           popd
           
       - name: Creating Config Info
