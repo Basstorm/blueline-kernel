@@ -48,10 +48,7 @@ jobs:
       - name: Customise
         run: |
           echo "#!/bin/bash 
-          mkdtimg cfg_create $1 $2 $3
-          echo $1
-          echo $2
-          echo $3
+          mkdtimg cfg_create arch/arm64/boot/dtbo.img ../arch/arm64/boot/dts/dtboimg.cfg
           " > ~/clang/bin/cfg_create
           sudo chmod a+x ~/clang/bin/cfg_create
           
@@ -81,7 +78,6 @@ jobs:
           sed -i 's/CONFIG_LTO_CLANG=y/CONFIG_LTO_CLANG=n/' arch/arm64/configs/b1c1_defconfig
           sed -i 's/CONFIG_THINLTO=y/CONFIG_THINLTO=n/' arch/arm64/configs/b1c1_defconfig
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/b1c1_defconfig
-          alias cfg_create='mkdtimg cfg_create'
           make O=out ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip b1c1_defconfig
           make O=out ARCH=arm64 CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip -j$(grep -c ^processor /proc/cpuinfo)
           popd
