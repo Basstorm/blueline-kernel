@@ -39,7 +39,7 @@ jobs:
           
       - name: Cloning AnyKernel3
         run: |
-          git clone https://github.com/osm0sis/AnyKernel3 --depth=1
+          git clone https://github.com/Basstorm/AnyKernel3 --depth=1
 
       - name: Cloning Source
         run: |
